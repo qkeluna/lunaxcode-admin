@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     
     # CORS
-    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://localhost:8000", "https://lunaxcode.com"]
+    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://localhost:8000", "https://lunaxcode.com", "https://*.leapcell.io", "*"]
     
     # Xata Database
     XATA_API_KEY: Optional[str] = None
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     XATA_BRANCH: str = "main"
     
     # Redis Cache
-    REDIS_URL: str = "redis://localhost:6379"
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     CACHE_TTL: int = 300  # 5 minutes default
     
     # Pagination
