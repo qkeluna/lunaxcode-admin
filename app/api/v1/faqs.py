@@ -5,7 +5,7 @@ FAQs API endpoints.
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import FAQ, FAQCreate, FAQUpdate, FAQCategory
@@ -36,7 +36,7 @@ async def create_faq(
 
 
 @router.get("/", response_model=PaginatedResponse)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_faqs(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -59,7 +59,7 @@ async def get_faqs(
 
 
 @router.get("/{record_id}", response_model=FAQ)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_faq(
     record_id: str,
     service: BaseService = Depends(get_faqs_service)

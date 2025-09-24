@@ -4,7 +4,7 @@ Process steps API endpoints.
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import ProcessStep, ProcessStepCreate, ProcessStepUpdate
@@ -54,7 +54,7 @@ async def create_process_step(
     response_model=PaginatedResponse,
     summary="Get all process steps"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_process_steps(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -84,7 +84,7 @@ async def get_process_steps(
     response_model=ProcessStep,
     summary="Get process step by ID"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_process_step(
     record_id: str,
     service: BaseService = Depends(get_process_steps_service)

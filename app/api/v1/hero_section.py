@@ -4,7 +4,7 @@ Hero section API endpoints.
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import HeroSection, HeroSectionCreate, HeroSectionUpdate
@@ -37,7 +37,7 @@ async def create_hero_section(
 
 
 @router.get("/", response_model=PaginatedResponse)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_hero_sections(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -50,7 +50,7 @@ async def get_hero_sections(
 
 
 @router.get("/{record_id}", response_model=HeroSection)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_hero_section(
     record_id: str,
     service: BaseService = Depends(get_hero_section_service)

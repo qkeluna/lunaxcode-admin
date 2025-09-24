@@ -4,7 +4,7 @@ Site settings API endpoints.
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import SiteSetting, SiteSettingCreate, SiteSettingUpdate
@@ -35,7 +35,7 @@ async def create_site_setting(
 
 
 @router.get("/", response_model=PaginatedResponse)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_site_settings(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -53,7 +53,7 @@ async def get_site_settings(
 
 
 @router.get("/key/{key}", response_model=SiteSetting)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_site_setting_by_key(
     key: str,
     service: BaseService = Depends(get_site_settings_service)
@@ -75,7 +75,7 @@ async def get_site_setting_by_key(
 
 
 @router.get("/{record_id}", response_model=SiteSetting)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_site_setting(
     record_id: str,
     service: BaseService = Depends(get_site_settings_service)

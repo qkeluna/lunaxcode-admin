@@ -5,7 +5,7 @@ Testimonials API endpoints.
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import Testimonial, TestimonialCreate, TestimonialUpdate, ProjectType
@@ -38,7 +38,7 @@ async def create_testimonial(
 
 
 @router.get("/", response_model=PaginatedResponse)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_testimonials(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -61,7 +61,7 @@ async def get_testimonials(
 
 
 @router.get("/{record_id}", response_model=Testimonial)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_testimonial(
     record_id: str,
     service: BaseService = Depends(get_testimonials_service)

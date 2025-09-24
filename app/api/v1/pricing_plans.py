@@ -5,7 +5,7 @@ Pricing plans API endpoints.
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import (
@@ -61,7 +61,7 @@ async def create_pricing_plan(
     summary="Get all pricing plans",
     description="Get paginated list of pricing plans with optional filtering"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_pricing_plans(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
@@ -99,7 +99,7 @@ async def get_pricing_plans(
     summary="Get popular pricing plans",
     description="Get list of popular pricing plans"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_popular_pricing_plans(
     limit: int = Query(3, ge=1, le=10, description="Maximum number of popular plans"),
     service: PricingPlansService = Depends(get_pricing_plans_service)
@@ -121,7 +121,7 @@ async def get_popular_pricing_plans(
     summary="Get pricing plans by category",
     description="Get all pricing plans for a specific category"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_pricing_plans_by_category(
     category: PlanCategory,
     service: PricingPlansService = Depends(get_pricing_plans_service)
@@ -143,7 +143,7 @@ async def get_pricing_plans_by_category(
     summary="Get pricing plan by planId",
     description="Get a specific pricing plan by its planId"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_pricing_plan_by_plan_id(
     plan_id: str,
     service: PricingPlansService = Depends(get_pricing_plans_service)
@@ -173,7 +173,7 @@ async def get_pricing_plan_by_plan_id(
     summary="Get pricing plan by ID",
     description="Get a specific pricing plan by its Xata record ID"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_pricing_plan(
     record_id: str,
     service: PricingPlansService = Depends(get_pricing_plans_service)

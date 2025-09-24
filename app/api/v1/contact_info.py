@@ -5,7 +5,7 @@ Contact info API endpoints.
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import ContactInfo, ContactInfoCreate, ContactInfoUpdate, ContactType
@@ -36,7 +36,7 @@ async def create_contact_info(
 
 
 @router.get("/", response_model=PaginatedResponse)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_contact_info(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -62,7 +62,7 @@ async def get_contact_info(
 
 
 @router.get("/{record_id}", response_model=ContactInfo)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_contact_info_item(
     record_id: str,
     service: BaseService = Depends(get_contact_info_service)

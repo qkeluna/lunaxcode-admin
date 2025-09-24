@@ -5,7 +5,7 @@ Addon services API endpoints.
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache2.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import AddonService, AddonServiceCreate, AddonServiceUpdate, ServiceCategory
@@ -36,7 +36,7 @@ async def create_addon_service(
 
 
 @router.get("/", response_model=PaginatedResponse)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_addon_services(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -62,7 +62,7 @@ async def get_addon_services(
 
 
 @router.get("/service-id/{service_id}", response_model=AddonService)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_addon_service_by_service_id(
     service_id: str,
     service: BaseService = Depends(get_addon_services_service)
@@ -83,7 +83,7 @@ async def get_addon_service_by_service_id(
 
 
 @router.get("/{record_id}", response_model=AddonService)
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_addon_service(
     record_id: str,
     service: BaseService = Depends(get_addon_services_service)
