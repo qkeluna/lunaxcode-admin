@@ -40,38 +40,22 @@ class XataDB:
         try:
             # Parse database URL to extract components
             db_url = settings.XATA_DATABASE_URL
+            logger.info(f"🔧 Initializing with db_url: {db_url}")
             
-            if db_url and db_url.startswith('postgresql://'):
-                # Extract components and prioritize XataClient over PostgreSQL due to connection issues
-                logger.info(f"🔧 Using XataClient approach (PostgreSQL had connection issues)")
-                
-                import re
-                # Use db_url directly to avoid parameter conflicts
-                try:
-                    self.client = XataClient(
-                        api_key=settings.XATA_API_KEY,
-                        db_url=db_url
-                    )
-                    logger.info("✅ XataClient initialized successfully with db_url")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to initialize XataClient: {e}")
-                    raise DatabaseError(f"Failed to initialize XataClient: {str(e)}", operation="connect")
-            
-            elif db_url and db_url.startswith('https://'):
-                # Handle HTTP endpoint URL format - use db_url directly
-                logger.info(f"🔧 Using HTTPS URL directly: {db_url}")
-                self.base_url = db_url
-                self.branch_name = settings.XATA_BRANCH
-                
-                # Initialize XataClient with db_url only
+            # Always use db_url directly regardless of format to avoid conflicts
+            try:
                 self.client = XataClient(
                     api_key=settings.XATA_API_KEY,
                     db_url=db_url
                 )
-            
-            else:
-                raise ValueError(f"Unsupported database URL format: {db_url}")
+                logger.info("✅ XataClient initialized successfully with db_url")
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize XataClient: {e}")
+                logger.error(f"Error type: {type(e)}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
+                raise DatabaseError(f"Failed to initialize XataClient: {str(e)}", operation="connect")
             
             # Initialize HTTP client for direct API calls
             self.http_client = httpx.AsyncClient(
