@@ -5,7 +5,7 @@ Addon services API endpoints.
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache.decorator import cache
+from fastapi_cache2.decorator import cache
 
 from app.database.xata import get_database, XataDB
 from app.models.content import AddonService, AddonServiceCreate, AddonServiceUpdate, ServiceCategory

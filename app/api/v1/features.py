@@ -4,7 +4,7 @@ Features API endpoints.
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi_cache.decorator import cache
+# Caching temporarily disabled for deployment
 
 from app.database.xata import get_database, XataDB
 from app.models.content import Feature, FeatureCreate, FeatureUpdate
@@ -54,7 +54,7 @@ async def create_feature(
     response_model=PaginatedResponse,
     summary="Get all features"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_features(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -83,7 +83,7 @@ async def get_features(
     response_model=Feature,
     summary="Get feature by ID"
 )
-@cache(expire=settings.CACHE_TTL)
+# @cache(expire=settings.CACHE_TTL)
 async def get_feature(
     record_id: str,
     service: BaseService = Depends(get_features_service)
