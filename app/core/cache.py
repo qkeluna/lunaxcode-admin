@@ -6,8 +6,9 @@ import json
 import logging
 from typing import Any, Optional, Dict
 import redis.asyncio as redis
-from fastapi_cache2 import FastAPICache
-from fastapi_cache2.backends.redis import RedisBackend
+# Caching temporarily disabled for deployment
+# from fastapi_cache2 import FastAPICache
+# from fastapi_cache2.backends.redis import RedisBackend
 
 from app.core.config import settings
 
@@ -31,8 +32,8 @@ async def init_cache():
         # Test connection
         await redis_client.ping()
         
-        # Initialize FastAPI Cache with Redis
-        FastAPICache.init(RedisBackend(redis_client), prefix="lunaxcode-cms")
+        # Initialize FastAPI Cache with Redis (disabled for deployment)
+        # FastAPICache.init(RedisBackend(redis_client), prefix="lunaxcode-cms")
         
         logger.info("✅ Redis cache initialized successfully")
         
@@ -40,9 +41,9 @@ async def init_cache():
         logger.error(f"❌ Failed to initialize Redis cache: {e}")
         redis_client = None
         
-        # Initialize FastAPICache with a dummy backend to prevent errors
-        from fastapi_cache2.backends.inmemory import InMemoryBackend
-        FastAPICache.init(InMemoryBackend(), prefix="lunaxcode-cms")
+        # Initialize FastAPICache with a dummy backend to prevent errors (disabled for deployment)
+        # from fastapi_cache2.backends.inmemory import InMemoryBackend
+        # FastAPICache.init(InMemoryBackend(), prefix="lunaxcode-cms")
         logger.info("✅ FastAPI Cache initialized with in-memory backend (fallback)")
 
 
