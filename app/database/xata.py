@@ -59,38 +59,12 @@ class XataDB:
                     raise DatabaseError(f"Failed to initialize XataClient: {str(e)}", operation="connect")
             
             elif db_url and db_url.startswith('https://'):
-                # Handle HTTP endpoint URL format
-                import re
+                # Handle HTTP endpoint URL format - use db_url directly
+                logger.info(f"🔧 Using HTTPS URL directly: {db_url}")
+                self.base_url = db_url
+                self.branch_name = settings.XATA_BRANCH
                 
-                # Try format with branch: https://workspace-name.region.xata.sh/db/db_name:branch
-                match_with_branch = re.match(r'https://([^.]+)\.([^.]+)\.xata\.sh/db/([^:]+):(.+)', db_url)
-                
-                # Try format without branch: https://workspace-name.region.xata.sh/db/db_name
-                match_without_branch = re.match(r'https://([^.]+)\.([^.]+)\.xata\.sh/db/([^:]+)$', db_url)
-                
-                if match_with_branch:
-                    workspace_name, region, db_name, branch = match_with_branch.groups()
-                    logger.info(f"🔧 Parsed HTTP URL with branch: workspace={workspace_name}, region={region}, db={db_name}, branch={branch}")
-                    
-                    # Use the full workspace name for the base URL
-                    self.base_url = f"https://{workspace_name}.{region}.xata.sh/db/{db_name}"
-                    self.branch_name = branch
-                    
-                elif match_without_branch:
-                    workspace_name, region, db_name = match_without_branch.groups()
-                    logger.info(f"🔧 Parsed HTTP URL without branch: workspace={workspace_name}, region={region}, db={db_name}")
-                    
-                    # Use the full workspace name for the base URL
-                    self.base_url = f"https://{workspace_name}.{region}.xata.sh/db/{db_name}"
-                    self.branch_name = settings.XATA_BRANCH  # Use default from config
-                    
-                else:
-                    # Use db_url directly if it doesn't match expected formats
-                    logger.info(f"🔧 Using HTTP URL directly: {db_url}")
-                    self.base_url = db_url
-                    self.branch_name = settings.XATA_BRANCH
-                
-                # Always use db_url directly to avoid parameter conflicts
+                # Initialize XataClient with db_url only
                 self.client = XataClient(
                     api_key=settings.XATA_API_KEY,
                     db_url=db_url
