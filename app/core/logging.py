@@ -77,8 +77,12 @@ def setup_logging() -> None:
         }
     }
     
-    # Create logs directory if it doesn't exist
+    # Create logs directory if it doesn't exist (disabled for deployment)
     import os
-    os.makedirs("logs", exist_ok=True)
+    try:
+        os.makedirs("logs", exist_ok=True)
+    except OSError:
+        # Skip directory creation in read-only environments (like deployment)
+        pass
     
     logging.config.dictConfig(logging_config)
