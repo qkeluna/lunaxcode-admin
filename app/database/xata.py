@@ -46,40 +46,17 @@ class XataDB:
                 logger.info(f"🔧 Using XataClient approach (PostgreSQL had connection issues)")
                 
                 import re
-                # Parse PostgreSQL URL to extract components for XataClient
-                match = re.match(r'postgresql://([^:]+):[^@]+@([^.]+)\.sql\.xata\.sh/([^:]+):(.+)\?', db_url)
-                if match:
-                    workspace_id, region, db_name, branch = match.groups()
-                    logger.info(f"🔧 Extracted components: workspace={workspace_id}, region={region}, db={db_name}, branch={branch}")
+                # Use db_url directly to avoid parameter conflicts
+                try:
+                    self.client = XataClient(
+                        api_key=settings.XATA_API_KEY,
+                        db_url=db_url
+                    )
+                    logger.info("✅ XataClient initialized successfully with db_url")
                     
-                    self.branch_name = branch
-                    
-                    # Initialize XataClient as primary method
-                    try:
-                        self.client = XataClient(
-                            api_key=settings.XATA_API_KEY,
-                            workspace_id=workspace_id,
-                            region=region,
-                            db_name=db_name,
-                            branch_name=branch
-                        )
-                        logger.info("✅ XataClient initialized successfully")
-                        
-                        # Set up HTTP client for direct API calls if needed
-                        self.http_client = httpx.AsyncClient(
-                            headers={
-                                "Authorization": f"Bearer {settings.XATA_API_KEY}",
-                                "Content-Type": "application/json"
-                            },
-                            timeout=30.0
-                        )
-                        
-                    except Exception as e:
-                        logger.error(f"Failed to initialize XataClient: {e}")
-                        raise DatabaseError(f"Failed to initialize XataClient: {str(e)}", operation="connect")
-                else:
-                    logger.warning("Could not parse PostgreSQL URL components")
-                    raise DatabaseError("Invalid PostgreSQL URL format", operation="connect")
+                except Exception as e:
+                    logger.error(f"Failed to initialize XataClient: {e}")
+                    raise DatabaseError(f"Failed to initialize XataClient: {str(e)}", operation="connect")
             
             elif db_url and db_url.startswith('https://'):
                 # Handle HTTP endpoint URL format
@@ -113,32 +90,11 @@ class XataDB:
                     self.base_url = db_url
                     self.branch_name = settings.XATA_BRANCH
                 
-                # For XataClient, try to extract workspace_id from the full name
-                if 'workspace_name' in locals():
-                    workspace_id_match = re.search(r'-([a-z0-9]+)$', workspace_name)
-                    if workspace_id_match:
-                        workspace_id = workspace_id_match.group(1)
-                        
-                        # Initialize Xata client with individual parameters
-                        self.client = XataClient(
-                            api_key=settings.XATA_API_KEY,
-                            workspace_id=workspace_id,
-                            region=region,
-                            db_name=db_name,
-                            branch_name=self.branch_name
-                        )
-                    else:
-                        # Fallback: use db_url directly
-                        self.client = XataClient(
-                            api_key=settings.XATA_API_KEY,
-                            db_url=db_url
-                        )
-                else:
-                    # Use db_url directly
-                    self.client = XataClient(
-                        api_key=settings.XATA_API_KEY,
-                        db_url=db_url
-                    )
+                # Always use db_url directly to avoid parameter conflicts
+                self.client = XataClient(
+                    api_key=settings.XATA_API_KEY,
+                    db_url=db_url
+                )
             
             else:
                 raise ValueError(f"Unsupported database URL format: {db_url}")
