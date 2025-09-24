@@ -44,11 +44,21 @@ class XataDB:
             
             # Always use db_url directly regardless of format to avoid conflicts
             try:
+                # Use the same pattern as working examples with branch_name
                 self.client = XataClient(
                     api_key=settings.XATA_API_KEY,
-                    db_url=db_url
+                    db_url=db_url,
+                    branch_name=settings.XATA_BRANCH
                 )
                 logger.info("✅ XataClient initialized successfully with db_url")
+                
+                # Test the connection with a simple operation
+                try:
+                    # Simple test to verify connection works
+                    result = self.client.databases().getDatabaseMetadata()
+                    logger.info(f"Database connection test successful: {result.status_code}")
+                except Exception as test_e:
+                    logger.warning(f"Database test failed but client created: {test_e}")
                 
             except Exception as e:
                 logger.error(f"Failed to initialize XataClient: {e}")
