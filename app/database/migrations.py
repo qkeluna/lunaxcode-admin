@@ -10,8 +10,11 @@ from app.database.postgres import db_manager, get_db_session
 from app.models.database import (
     PricingPlan, Feature, ProcessStep, HeroSection, Testimonial,
     ContactInfo, FAQ, SiteSetting, AddonService,
+    OnboardingStep, OnboardingStepProgress, OnboardingAnalytics,
     PlanCategory, ButtonVariant, ContactType, FAQCategory,
-    SettingType, ServiceCategory, ProjectType, ServiceUnit
+    SettingType, ServiceCategory, ProjectType, ServiceUnit,
+    ServiceType, StepName, StepStatus, ComponentType, UILayout,
+    DeviceType, ConversionStatus
 )
 
 logger = logging.getLogger(__name__)
@@ -239,11 +242,172 @@ class DatabaseMigration:
                     is_active=True
                 )
                 
+                # Sample onboarding steps
+                sample_onboarding_steps = [
+                    OnboardingStep(
+                        step_number=1,
+                        step_name=StepName.SERVICE_SELECTION,
+                        step_title="Choose Your Service",
+                        step_description="Select the type of service you need for your project",
+                        validation_schema={
+                            "type": "object",
+                            "properties": {
+                                "serviceType": {"type": "string", "enum": ["landing_page", "web_app", "mobile_app"]}
+                            },
+                            "required": ["serviceType"]
+                        },
+                        required_fields=["serviceType"],
+                        optional_fields=[],
+                        component_type=ComponentType.SELECTION,
+                        form_config={
+                            "options": [
+                                {"value": "landing_page", "label": "Landing Page", "description": "Simple, focused single-page website"},
+                                {"value": "web_app", "label": "Web Application", "description": "Interactive web-based application"},
+                                {"value": "mobile_app", "label": "Mobile App", "description": "Native mobile application for iOS/Android"}
+                            ]
+                        },
+                        ui_layout=UILayout.GRID,
+                        back_allowed=False,
+                        service_types=["landing_page", "web_app", "mobile_app"],
+                        is_conditional=False,
+                        display_order=1,
+                        progress_weight=1,
+                        estimated_time=2,
+                        is_active=True,
+                        is_required=True
+                    ),
+                    OnboardingStep(
+                        step_number=2,
+                        step_name=StepName.BASIC_INFO,
+                        step_title="Project Information",
+                        step_description="Tell us about your project and contact details",
+                        validation_schema={
+                            "type": "object",
+                            "properties": {
+                                "projectName": {"type": "string", "minLength": 1},
+                                "companyName": {"type": "string", "minLength": 1},
+                                "contactEmail": {"type": "string", "format": "email"},
+                                "contactPhone": {"type": "string"},
+                                "projectDescription": {"type": "string", "minLength": 10}
+                            },
+                            "required": ["projectName", "companyName", "contactEmail", "projectDescription"]
+                        },
+                        required_fields=["projectName", "companyName", "contactEmail", "projectDescription"],
+                        optional_fields=["contactPhone", "preferredContact"],
+                        component_type=ComponentType.FORM,
+                        form_config={
+                            "fields": [
+                                {"name": "projectName", "type": "text", "label": "Project Name", "placeholder": "Enter your project name"},
+                                {"name": "companyName", "type": "text", "label": "Company Name", "placeholder": "Enter your company name"},
+                                {"name": "contactEmail", "type": "email", "label": "Contact Email", "placeholder": "your@email.com"},
+                                {"name": "contactPhone", "type": "tel", "label": "Phone Number", "placeholder": "+1 (555) 123-4567"},
+                                {"name": "projectDescription", "type": "textarea", "label": "Project Description", "placeholder": "Describe your project goals and requirements"}
+                            ]
+                        },
+                        ui_layout=UILayout.TWO_COLUMN,
+                        back_allowed=True,
+                        service_types=["landing_page", "web_app", "mobile_app"],
+                        is_conditional=False,
+                        display_order=2,
+                        progress_weight=2,
+                        estimated_time=5,
+                        is_active=True,
+                        is_required=True
+                    ),
+                    OnboardingStep(
+                        step_number=3,
+                        step_name=StepName.SERVICE_REQUIREMENTS,
+                        step_title="Service Requirements",
+                        step_description="Specific requirements for your chosen service",
+                        validation_schema={
+                            "type": "object",
+                            "properties": {
+                                "timeline": {"type": "string"},
+                                "budget": {"type": "string"},
+                                "features": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["timeline", "budget"]
+                        },
+                        required_fields=["timeline", "budget"],
+                        optional_fields=["features", "inspiration", "additionalNotes"],
+                        component_type=ComponentType.FORM,
+                        form_config={
+                            "fields": [
+                                {"name": "timeline", "type": "select", "label": "Desired Timeline", "options": ["1-2 weeks", "2-4 weeks", "1-2 months", "3+ months"]},
+                                {"name": "budget", "type": "select", "label": "Budget Range", "options": ["Under $500", "$500-$1000", "$1000-$2500", "$2500-$5000", "$5000+"]},
+                                {"name": "features", "type": "multiselect", "label": "Desired Features", "options": ["Contact Forms", "E-commerce", "Blog", "User Authentication", "Admin Panel", "Analytics"]},
+                                {"name": "inspiration", "type": "textarea", "label": "Inspiration/Examples", "placeholder": "Share any websites or apps that inspire you"},
+                                {"name": "additionalNotes", "type": "textarea", "label": "Additional Notes", "placeholder": "Any other requirements or notes"}
+                            ]
+                        },
+                        ui_layout=UILayout.SINGLE_COLUMN,
+                        back_allowed=True,
+                        service_types=["landing_page", "web_app", "mobile_app"],
+                        is_conditional=False,
+                        display_order=3,
+                        progress_weight=2,
+                        estimated_time=7,
+                        is_active=True,
+                        is_required=True
+                    ),
+                    OnboardingStep(
+                        step_number=4,
+                        step_name=StepName.REVIEW,
+                        step_title="Review Your Information",
+                        step_description="Please review all the information you've provided",
+                        validation_schema=None,
+                        required_fields=[],
+                        optional_fields=[],
+                        component_type=ComponentType.REVIEW,
+                        form_config={
+                            "sections": ["service_selection", "basic_info", "service_requirements"],
+                            "editable": True
+                        },
+                        ui_layout=UILayout.SINGLE_COLUMN,
+                        back_allowed=True,
+                        service_types=["landing_page", "web_app", "mobile_app"],
+                        is_conditional=False,
+                        display_order=4,
+                        progress_weight=1,
+                        estimated_time=3,
+                        is_active=True,
+                        is_required=True
+                    ),
+                    OnboardingStep(
+                        step_number=5,
+                        step_name=StepName.CONFIRMATION,
+                        step_title="Submission Complete",
+                        step_description="Thank you! We'll be in touch within 24 hours",
+                        validation_schema=None,
+                        required_fields=[],
+                        optional_fields=[],
+                        component_type=ComponentType.CONFIRMATION,
+                        form_config={
+                            "message": "Your project inquiry has been submitted successfully!",
+                            "nextSteps": [
+                                "We'll review your requirements within 24 hours",
+                                "Our team will contact you to discuss details",
+                                "We'll provide a detailed proposal and timeline"
+                            ]
+                        },
+                        ui_layout=UILayout.SINGLE_COLUMN,
+                        back_allowed=False,
+                        service_types=["landing_page", "web_app", "mobile_app"],
+                        is_conditional=False,
+                        display_order=5,
+                        progress_weight=1,
+                        estimated_time=1,
+                        is_active=True,
+                        is_required=True
+                    )
+                ]
+                
                 # Add all sample data
                 all_items = (
                     sample_plans + sample_features + sample_steps + 
                     [sample_hero, sample_testimonial] + sample_contacts + 
-                    [sample_faq] + sample_settings + [sample_addon]
+                    [sample_faq] + sample_settings + [sample_addon] +
+                    sample_onboarding_steps
                 )
                 
                 for item in all_items:

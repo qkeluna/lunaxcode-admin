@@ -69,6 +69,55 @@ class ServiceUnit(str, enum.Enum):
     ONE_TIME = "one-time"
 
 
+# Onboarding Enums
+class ServiceType(str, enum.Enum):
+    LANDING_PAGE = "landing_page"
+    WEB_APP = "web_app"
+    MOBILE_APP = "mobile_app"
+
+
+class StepName(str, enum.Enum):
+    SERVICE_SELECTION = "service_selection"
+    BASIC_INFO = "basic_info"
+    SERVICE_REQUIREMENTS = "service_requirements"
+    REVIEW = "review"
+    CONFIRMATION = "confirmation"
+
+
+class StepStatus(str, enum.Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    SKIPPED = "skipped"
+    ERROR = "error"
+
+
+class ComponentType(str, enum.Enum):
+    FORM = "form"
+    SELECTION = "selection"
+    REVIEW = "review"
+    CONFIRMATION = "confirmation"
+
+
+class UILayout(str, enum.Enum):
+    SINGLE_COLUMN = "single_column"
+    TWO_COLUMN = "two_column"
+    GRID = "grid"
+    CUSTOM = "custom"
+
+
+class DeviceType(str, enum.Enum):
+    DESKTOP = "desktop"
+    TABLET = "tablet"
+    MOBILE = "mobile"
+
+
+class ConversionStatus(str, enum.Enum):
+    COMPLETED = "completed"
+    ABANDONED = "abandoned"
+    IN_PROGRESS = "in_progress"
+
+
 # Base model with common fields
 class BaseModel(Base):
     """Base model with common fields for all tables."""
@@ -277,4 +326,115 @@ class AddonService(BaseModel):
         Index('idx_addon_services_category_active', 'category', 'is_active'),
         Index('idx_addon_services_popular_active', 'popular', 'is_active'),
         Index('idx_addon_services_display_order', 'display_order'),
+    )
+
+
+# Onboarding Steps Model
+class OnboardingStep(BaseModel):
+    """Onboarding steps configuration table."""
+    __tablename__ = "onboarding_steps"
+    
+    step_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_name: Mapped[StepName] = mapped_column(SQLEnum(StepName), nullable=False)
+    step_title: Mapped[str] = mapped_column(String(200), nullable=False)
+    step_description: Mapped[str] = mapped_column(Text, nullable=True)
+    validation_schema: Mapped[dict] = mapped_column(JSON, nullable=True)
+    required_fields: Mapped[List[str]] = mapped_column(JSON, nullable=True)
+    optional_fields: Mapped[List[str]] = mapped_column(JSON, nullable=True)
+    component_type: Mapped[ComponentType] = mapped_column(SQLEnum(ComponentType), nullable=False)
+    form_config: Mapped[dict] = mapped_column(JSON, nullable=True)
+    ui_layout: Mapped[UILayout] = mapped_column(SQLEnum(UILayout), default=UILayout.SINGLE_COLUMN)
+    next_step_conditions: Mapped[dict] = mapped_column(JSON, nullable=True)
+    skip_conditions: Mapped[dict] = mapped_column(JSON, nullable=True)
+    back_allowed: Mapped[bool] = mapped_column(Boolean, default=True)
+    service_types: Mapped[List[str]] = mapped_column(JSON, nullable=True)
+    is_conditional: Mapped[bool] = mapped_column(Boolean, default=False)
+    conditional_logic: Mapped[dict] = mapped_column(JSON, nullable=True)
+    display_order: Mapped[int] = mapped_column(Integer, default=0)
+    progress_weight: Mapped[int] = mapped_column(Integer, default=1)
+    estimated_time: Mapped[int] = mapped_column(Integer, nullable=True)  # minutes
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    __table_args__ = (
+        Index('idx_onboarding_steps_name_active', 'step_name', 'is_active'),
+        Index('idx_onboarding_steps_number_active', 'step_number', 'is_active'),
+        Index('idx_onboarding_steps_display_order', 'display_order'),
+        # Note: Cannot index JSON columns directly in PostgreSQL without operator class
+    )
+
+
+# Onboarding Step Progress Model
+class OnboardingStepProgress(BaseModel):
+    """Onboarding step progress tracking table."""
+    __tablename__ = "onboarding_step_progress"
+    
+    submission_id: Mapped[str] = mapped_column(String(100), nullable=True, index=True)
+    step_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    step_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_name: Mapped[StepName] = mapped_column(SQLEnum(StepName), nullable=False)
+    status: Mapped[StepStatus] = mapped_column(SQLEnum(StepStatus), default=StepStatus.PENDING)
+    step_data: Mapped[dict] = mapped_column(JSON, nullable=True)
+    validation_errors: Mapped[List[dict]] = mapped_column(JSON, nullable=True)
+    user_input: Mapped[dict] = mapped_column(JSON, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    time_spent: Mapped[int] = mapped_column(Integer, nullable=True)  # seconds
+    attempt_count: Mapped[int] = mapped_column(Integer, default=1)
+    previous_step_id: Mapped[str] = mapped_column(String(100), nullable=True)
+    next_step_id: Mapped[str] = mapped_column(String(100), nullable=True)
+    navigation_history: Mapped[List[dict]] = mapped_column(JSON, nullable=True)
+    user_agent: Mapped[str] = mapped_column(Text, nullable=True)
+    device_type: Mapped[DeviceType] = mapped_column(SQLEnum(DeviceType), nullable=True)
+    exited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    __table_args__ = (
+        Index('idx_step_progress_submission_step', 'submission_id', 'step_id'),
+        Index('idx_step_progress_status', 'status'),
+        Index('idx_step_progress_step_name', 'step_name'),
+        Index('idx_step_progress_device_type', 'device_type'),
+        Index('idx_step_progress_started_at', 'started_at'),
+    )
+
+
+# Onboarding Analytics Model
+class OnboardingAnalytics(BaseModel):
+    """Onboarding analytics and performance data table."""
+    __tablename__ = "onboarding_analytics"
+    
+    session_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    submission_id: Mapped[str] = mapped_column(String(100), nullable=True, index=True)
+    total_steps: Mapped[int] = mapped_column(Integer, nullable=False)
+    completed_steps: Mapped[int] = mapped_column(Integer, default=0)
+    skipped_steps: Mapped[int] = mapped_column(Integer, default=0)
+    error_steps: Mapped[int] = mapped_column(Integer, default=0)
+    total_time_spent: Mapped[int] = mapped_column(Integer, default=0)  # seconds
+    average_step_time: Mapped[int] = mapped_column(Integer, default=0)  # seconds
+    fastest_step: Mapped[str] = mapped_column(String(100), nullable=True)
+    slowest_step: Mapped[str] = mapped_column(String(100), nullable=True)
+    completion_rate: Mapped[int] = mapped_column(Integer, default=0)  # percentage 0-100
+    abandoned_at: Mapped[str] = mapped_column(String(100), nullable=True)
+    conversion_status: Mapped[ConversionStatus] = mapped_column(
+        SQLEnum(ConversionStatus), default=ConversionStatus.IN_PROGRESS
+    )
+    back_navigation_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_count: Mapped[int] = mapped_column(Integer, default=0)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    help_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    performance_score: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    user_experience_score: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    technical_issues: Mapped[List[dict]] = mapped_column(JSON, nullable=True)
+    user_agent: Mapped[str] = mapped_column(Text, nullable=True)
+    device_type: Mapped[DeviceType] = mapped_column(SQLEnum(DeviceType), nullable=True)
+    browser_name: Mapped[str] = mapped_column(String(100), nullable=True)
+    operating_system: Mapped[str] = mapped_column(String(100), nullable=True)
+    screen_resolution: Mapped[str] = mapped_column(String(50), nullable=True)
+    
+    __table_args__ = (
+        Index('idx_analytics_session_id', 'session_id'),
+        Index('idx_analytics_submission_id', 'submission_id'),
+        Index('idx_analytics_conversion_status', 'conversion_status'),
+        Index('idx_analytics_completion_rate', 'completion_rate'),
+        Index('idx_analytics_device_type', 'device_type'),
+        Index('idx_analytics_created_at', 'created_at'),
     )

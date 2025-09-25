@@ -11,7 +11,9 @@ from enum import Enum
 # Import enums from database models
 from app.models.database import (
     PlanCategory, ButtonVariant, ContactType, FAQCategory, 
-    SettingType, ServiceCategory, ProjectType, ServiceUnit
+    SettingType, ServiceCategory, ProjectType, ServiceUnit,
+    ServiceType, StepName, StepStatus, ComponentType, UILayout,
+    DeviceType, ConversionStatus
 )
 
 
@@ -417,3 +419,252 @@ class AddonServiceUpdate(BaseModel):
 class AddonService(AddonServiceBase, BaseSchema):
     """Complete addon service schema."""
     pass
+
+
+# Onboarding Schemas
+class OnboardingStepBase(BaseModel):
+    """Base onboarding step schema."""
+    
+    step_number: int = Field(..., description="Sequential step number")
+    step_name: StepName = Field(..., description="Step name enum")
+    step_title: str = Field(..., description="Display title for the step")
+    step_description: Optional[str] = Field(None, description="Optional step description")
+    validation_schema: Optional[Dict[str, Any]] = Field(None, description="JSON validation schema")
+    required_fields: Optional[List[str]] = Field(None, description="List of required field names")
+    optional_fields: Optional[List[str]] = Field(None, description="List of optional field names")
+    component_type: ComponentType = Field(..., description="UI component type")
+    form_config: Optional[Dict[str, Any]] = Field(None, description="Form configuration object")
+    ui_layout: UILayout = Field(UILayout.SINGLE_COLUMN, description="UI layout type")
+    next_step_conditions: Optional[Dict[str, Any]] = Field(None, description="Conditions for next step")
+    skip_conditions: Optional[Dict[str, Any]] = Field(None, description="Conditions to skip step")
+    back_allowed: bool = Field(True, description="Whether back navigation is allowed")
+    service_types: Optional[List[str]] = Field(None, description="Applicable service types")
+    is_conditional: bool = Field(False, description="Whether step is conditionally displayed")
+    conditional_logic: Optional[Dict[str, Any]] = Field(None, description="Conditional logic object")
+    display_order: int = Field(0, description="Display order")
+    progress_weight: int = Field(1, description="Progress bar weight")
+    estimated_time: Optional[int] = Field(None, description="Estimated completion time in minutes")
+    is_active: bool = Field(True, description="Whether step is active")
+    is_required: bool = Field(True, description="Whether step is required")
+
+
+class OnboardingStepCreate(OnboardingStepBase):
+    """Schema for creating onboarding steps."""
+    pass
+
+
+class OnboardingStepUpdate(BaseModel):
+    """Schema for updating onboarding steps."""
+    
+    step_number: Optional[int] = None
+    step_name: Optional[StepName] = None
+    step_title: Optional[str] = None
+    step_description: Optional[str] = None
+    validation_schema: Optional[Dict[str, Any]] = None
+    required_fields: Optional[List[str]] = None
+    optional_fields: Optional[List[str]] = None
+    component_type: Optional[ComponentType] = None
+    form_config: Optional[Dict[str, Any]] = None
+    ui_layout: Optional[UILayout] = None
+    next_step_conditions: Optional[Dict[str, Any]] = None
+    skip_conditions: Optional[Dict[str, Any]] = None
+    back_allowed: Optional[bool] = None
+    service_types: Optional[List[str]] = None
+    is_conditional: Optional[bool] = None
+    conditional_logic: Optional[Dict[str, Any]] = None
+    display_order: Optional[int] = None
+    progress_weight: Optional[int] = None
+    estimated_time: Optional[int] = None
+    is_active: Optional[bool] = None
+    is_required: Optional[bool] = None
+
+
+class OnboardingStep(OnboardingStepBase, BaseSchema):
+    """Complete onboarding step schema."""
+    pass
+
+
+class OnboardingStepProgressBase(BaseModel):
+    """Base onboarding step progress schema."""
+    
+    submission_id: Optional[str] = Field(None, description="Reference to submission")
+    step_id: str = Field(..., description="Reference to onboarding step")
+    step_number: int = Field(..., description="Step sequence number")
+    step_name: StepName = Field(..., description="Step name")
+    status: StepStatus = Field(StepStatus.PENDING, description="Current step status")
+    step_data: Optional[Dict[str, Any]] = Field(None, description="Data collected in step")
+    validation_errors: Optional[List[Dict[str, Any]]] = Field(None, description="Validation errors")
+    user_input: Optional[Dict[str, Any]] = Field(None, description="Raw user input")
+    started_at: Optional[datetime] = Field(None, description="When step was started")
+    completed_at: Optional[datetime] = Field(None, description="When step was completed")
+    time_spent: Optional[int] = Field(None, description="Time spent in seconds")
+    attempt_count: int = Field(1, description="Number of attempts")
+    previous_step_id: Optional[str] = Field(None, description="Previous step reference")
+    next_step_id: Optional[str] = Field(None, description="Next step reference")
+    navigation_history: Optional[List[Dict[str, Any]]] = Field(None, description="Navigation events")
+    user_agent: Optional[str] = Field(None, description="User agent string")
+    device_type: Optional[DeviceType] = Field(None, description="Device type")
+    exited_at: Optional[datetime] = Field(None, description="If user exited without completing")
+
+
+class OnboardingStepProgressCreate(OnboardingStepProgressBase):
+    """Schema for creating step progress records."""
+    pass
+
+
+class OnboardingStepProgressUpdate(BaseModel):
+    """Schema for updating step progress."""
+    
+    status: Optional[StepStatus] = None
+    step_data: Optional[Dict[str, Any]] = None
+    validation_errors: Optional[List[Dict[str, Any]]] = None
+    user_input: Optional[Dict[str, Any]] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    time_spent: Optional[int] = None
+    attempt_count: Optional[int] = None
+    navigation_history: Optional[List[Dict[str, Any]]] = None
+    exited_at: Optional[datetime] = None
+
+
+class OnboardingStepProgress(OnboardingStepProgressBase, BaseSchema):
+    """Complete step progress schema."""
+    pass
+
+
+class OnboardingAnalyticsBase(BaseModel):
+    """Base onboarding analytics schema."""
+    
+    session_id: str = Field(..., description="Session identifier")
+    submission_id: Optional[str] = Field(None, description="Submission reference")
+    total_steps: int = Field(..., description="Total number of steps")
+    completed_steps: int = Field(0, description="Number of completed steps")
+    skipped_steps: int = Field(0, description="Number of skipped steps")
+    error_steps: int = Field(0, description="Number of steps with errors")
+    total_time_spent: int = Field(0, description="Total time in seconds")
+    average_step_time: int = Field(0, description="Average time per step")
+    fastest_step: Optional[str] = Field(None, description="Fastest completed step")
+    slowest_step: Optional[str] = Field(None, description="Slowest completed step")
+    completion_rate: int = Field(0, description="Completion percentage (0-100)")
+    abandoned_at: Optional[str] = Field(None, description="Step where user abandoned")
+    conversion_status: ConversionStatus = Field(ConversionStatus.IN_PROGRESS, description="Conversion status")
+    back_navigation_count: int = Field(0, description="Number of back navigations")
+    error_count: int = Field(0, description="Total error count")
+    retry_count: int = Field(0, description="Total retry count")
+    help_requested: bool = Field(False, description="Whether help was requested")
+    performance_score: int = Field(0, description="Performance score (0-100)")
+    user_experience_score: int = Field(0, description="UX score (0-100)")
+    technical_issues: Optional[List[Dict[str, Any]]] = Field(None, description="Technical issues")
+    user_agent: Optional[str] = Field(None, description="User agent string")
+    device_type: Optional[DeviceType] = Field(None, description="Device type")
+    browser_name: Optional[str] = Field(None, description="Browser name")
+    operating_system: Optional[str] = Field(None, description="Operating system")
+    screen_resolution: Optional[str] = Field(None, description="Screen resolution")
+
+
+class OnboardingAnalyticsCreate(OnboardingAnalyticsBase):
+    """Schema for creating analytics records."""
+    pass
+
+
+class OnboardingAnalyticsUpdate(BaseModel):
+    """Schema for updating analytics."""
+    
+    completed_steps: Optional[int] = None
+    skipped_steps: Optional[int] = None
+    error_steps: Optional[int] = None
+    total_time_spent: Optional[int] = None
+    average_step_time: Optional[int] = None
+    fastest_step: Optional[str] = None
+    slowest_step: Optional[str] = None
+    completion_rate: Optional[int] = None
+    abandoned_at: Optional[str] = None
+    conversion_status: Optional[ConversionStatus] = None
+    back_navigation_count: Optional[int] = None
+    error_count: Optional[int] = None
+    retry_count: Optional[int] = None
+    help_requested: Optional[bool] = None
+    performance_score: Optional[int] = None
+    user_experience_score: Optional[int] = None
+    technical_issues: Optional[List[Dict[str, Any]]] = None
+
+
+class OnboardingAnalytics(OnboardingAnalyticsBase, BaseSchema):
+    """Complete analytics schema."""
+    pass
+
+
+# Flow Management Schemas
+class StartOnboardingFlowRequest(BaseModel):
+    """Request to start new onboarding flow."""
+    
+    service_type: ServiceType = Field(..., description="Selected service type")
+    user_agent: Optional[str] = Field(None, description="User agent string")
+    device_type: Optional[DeviceType] = Field(None, description="Device type")
+    screen_resolution: Optional[str] = Field(None, description="Screen resolution")
+
+
+class SubmitStepDataRequest(BaseModel):
+    """Request to submit step data."""
+    
+    session_id: str = Field(..., description="Session identifier")
+    step_id: str = Field(..., description="Step identifier")
+    step_data: Dict[str, Any] = Field(..., description="Step form data")
+    time_spent: Optional[int] = Field(None, description="Time spent in seconds")
+    device_type: Optional[DeviceType] = Field(None, description="Device type")
+    user_agent: Optional[str] = Field(None, description="User agent")
+
+
+class ValidationResult(BaseModel):
+    """Validation result schema."""
+    
+    is_valid: bool = Field(..., description="Whether validation passed")
+    errors: List[Dict[str, Any]] = Field(default_factory=list, description="Validation errors")
+    warnings: List[Dict[str, Any]] = Field(default_factory=list, description="Validation warnings")
+
+
+class SubmitStepDataResponse(BaseModel):
+    """Response for step data submission."""
+    
+    success: bool = Field(..., description="Whether submission was successful")
+    validation_result: ValidationResult = Field(..., description="Validation results")
+    next_step: Optional[OnboardingStep] = Field(None, description="Next step configuration")
+    progress_percentage: int = Field(..., description="Overall progress percentage")
+    can_proceed: bool = Field(..., description="Whether user can proceed to next step")
+
+
+class OnboardingFlowConfig(BaseModel):
+    """Onboarding flow configuration."""
+    
+    steps: List[OnboardingStep] = Field(..., description="Available steps")
+    service_type: ServiceType = Field(..., description="Service type")
+    total_steps: int = Field(..., description="Total number of steps")
+    current_step: int = Field(..., description="Current step number")
+    progress: int = Field(..., description="Progress percentage (0-100)")
+    can_go_back: bool = Field(..., description="Whether back navigation is allowed")
+    can_go_next: bool = Field(..., description="Whether next navigation is allowed")
+    can_skip: bool = Field(..., description="Whether current step can be skipped")
+
+
+class OnboardingFlowState(BaseModel):
+    """Current onboarding flow state."""
+    
+    session_id: str = Field(..., description="Session identifier")
+    submission_id: Optional[str] = Field(None, description="Submission identifier")
+    current_step: int = Field(..., description="Current step number")
+    current_step_name: StepName = Field(..., description="Current step name")
+    step_history: List[str] = Field(..., description="Completed step IDs")
+    form_data: Dict[str, Any] = Field(..., description="Accumulated form data")
+    service_type: ServiceType = Field(..., description="Selected service type")
+    is_complete: bool = Field(..., description="Whether flow is complete")
+    started_at: datetime = Field(..., description="When flow started")
+    last_active_at: datetime = Field(..., description="Last activity timestamp")
+
+
+class StartOnboardingFlowResponse(BaseModel):
+    """Response for starting onboarding flow."""
+    
+    session_id: str = Field(..., description="Session identifier")
+    flow_config: OnboardingFlowConfig = Field(..., description="Flow configuration")
+    current_step: OnboardingStep = Field(..., description="First step to display")
+    analytics_id: str = Field(..., description="Analytics tracking ID")
