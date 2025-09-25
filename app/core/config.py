@@ -32,10 +32,8 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://localhost:8000", "https://lunaxcode.com", "https://*.leapcell.io", "*"]
     
-    # Xata Database
-    XATA_API_KEY: Optional[str] = None
-    XATA_DATABASE_URL: Optional[str] = None
-    XATA_BRANCH: str = "main"
+    # PostgreSQL Database
+    DATABASE_URL: Optional[str] = None
     
     # Redis Cache
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")

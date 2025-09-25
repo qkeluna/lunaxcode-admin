@@ -4,12 +4,11 @@ Features API endpoints.
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-# Caching temporarily disabled for deployment
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.xata import get_database, XataDB
-from app.models.content import Feature, FeatureCreate, FeatureUpdate
-from app.models.base import PaginationParams, PaginatedResponse, BaseResponse
-from app.services.base import BaseService
+from app.database.postgres import get_db_session
+from app.models.schemas import Feature, FeatureCreate, FeatureUpdate, PaginationParams, PaginatedResponse, BaseResponse
+from app.services.postgres_services import PostgresFeaturesService
 from app.core.exceptions import NotFoundError
 from app.core.config import settings
 
@@ -17,15 +16,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_features_service(db: XataDB = Depends(get_database)) -> BaseService:
+def get_features_service(session: AsyncSession = Depends(get_db_session)) -> PostgresFeaturesService:
     """Get features service instance."""
-    return BaseService(
-        db=db,
-        table_name="features",
-        model_class=Feature,
-        create_model_class=FeatureCreate,
-        update_model_class=FeatureUpdate
-    )
+    return PostgresFeaturesService(session)
 
 
 @router.post(
@@ -36,7 +29,7 @@ def get_features_service(db: XataDB = Depends(get_database)) -> BaseService:
 )
 async def create_feature(
     feature_data: FeatureCreate,
-    service: BaseService = Depends(get_features_service)
+    service: PostgresFeaturesService = Depends(get_features_service)
 ) -> Feature:
     """Create a new feature."""
     try:
@@ -59,16 +52,16 @@ async def get_features(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     active_only: bool = Query(True),
-    service: BaseService = Depends(get_features_service)
+    service: PostgresFeaturesService = Depends(get_features_service)
 ) -> PaginatedResponse:
     """Get all features with pagination."""
     try:
         pagination = PaginationParams(page=page, size=size)
-        filter_conditions = {"isActive": True} if active_only else None
+        filters = {"is_active": True} if active_only else None
         
         return await service.get_all(
             pagination=pagination,
-            filter_conditions=filter_conditions
+            filters=filters
         )
     except Exception as e:
         logger.error(f"Error getting features: {e}")
@@ -86,7 +79,7 @@ async def get_features(
 # @cache(expire=settings.CACHE_TTL)
 async def get_feature(
     record_id: str,
-    service: BaseService = Depends(get_features_service)
+    service: PostgresFeaturesService = Depends(get_features_service)
 ) -> Feature:
     """Get feature by ID."""
     try:
@@ -115,7 +108,7 @@ async def get_feature(
 async def update_feature(
     record_id: str,
     feature_data: FeatureUpdate,
-    service: BaseService = Depends(get_features_service)
+    service: PostgresFeaturesService = Depends(get_features_service)
 ) -> Feature:
     """Update feature."""
     try:
@@ -141,7 +134,7 @@ async def update_feature(
 async def delete_feature(
     record_id: str,
     hard_delete: bool = Query(False, description="Perform hard delete"),
-    service: BaseService = Depends(get_features_service)
+    service: PostgresFeaturesService = Depends(get_features_service)
 ) -> BaseResponse:
     """Delete feature."""
     try:
@@ -154,7 +147,7 @@ async def delete_feature(
                 )
             message = "Feature deleted permanently"
         else:
-            await service.update(record_id, FeatureUpdate(isActive=False))
+            await service.update(record_id, FeatureUpdate(is_active=False))
             message = "Feature deactivated"
         
         return BaseResponse(success=True, message=message)

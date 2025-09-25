@@ -4,12 +4,11 @@ Process steps API endpoints.
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-# Caching temporarily disabled for deployment
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.xata import get_database, XataDB
-from app.models.content import ProcessStep, ProcessStepCreate, ProcessStepUpdate
-from app.models.base import PaginationParams, PaginatedResponse, BaseResponse
-from app.services.base import BaseService
+from app.database.postgres import get_db_session
+from app.models.schemas import ProcessStep, ProcessStepCreate, ProcessStepUpdate, PaginationParams, PaginatedResponse, BaseResponse
+from app.services.postgres_services import PostgresProcessStepsService
 from app.core.exceptions import NotFoundError
 from app.core.config import settings
 
@@ -17,15 +16,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_process_steps_service(db: XataDB = Depends(get_database)) -> BaseService:
-    """Get process steps service instance."""
-    return BaseService(
-        db=db,
-        table_name="process_steps",
-        model_class=ProcessStep,
-        create_model_class=ProcessStepCreate,
-        update_model_class=ProcessStepUpdate
-    )
+def get_service(session: AsyncSession = Depends(get_db_session)) -> PostgresProcessStepsService:
+    """Get service instance."""
+    return PostgresProcessStepsService(session)
 
 
 @router.post(
@@ -36,7 +29,7 @@ def get_process_steps_service(db: XataDB = Depends(get_database)) -> BaseService
 )
 async def create_process_step(
     step_data: ProcessStepCreate,
-    service: BaseService = Depends(get_process_steps_service)
+    service: PostgresProcessStepsService = Depends(get_service)
 ) -> ProcessStep:
     """Create a new process step."""
     try:
@@ -54,22 +47,20 @@ async def create_process_step(
     response_model=PaginatedResponse,
     summary="Get all process steps"
 )
-# @cache(expire=settings.CACHE_TTL)
 async def get_process_steps(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     active_only: bool = Query(True),
-    service: BaseService = Depends(get_process_steps_service)
+    service: PostgresProcessStepsService = Depends(get_service)
 ) -> PaginatedResponse:
     """Get all process steps with pagination."""
     try:
         pagination = PaginationParams(page=page, size=size)
-        filter_conditions = {"isActive": True} if active_only else None
+        filters = {"is_active": True} if active_only else None
         
         return await service.get_all(
             pagination=pagination,
-            filter_conditions=filter_conditions,
-            sort_by="stepNumber"  # Sort by step number instead of displayOrder
+            filters=filters
         )
     except Exception as e:
         logger.error(f"Error getting process steps: {e}")
@@ -84,10 +75,9 @@ async def get_process_steps(
     response_model=ProcessStep,
     summary="Get process step by ID"
 )
-# @cache(expire=settings.CACHE_TTL)
 async def get_process_step(
     record_id: str,
-    service: BaseService = Depends(get_process_steps_service)
+    service: PostgresProcessStepsService = Depends(get_service)
 ) -> ProcessStep:
     """Get process step by ID."""
     try:
@@ -116,7 +106,7 @@ async def get_process_step(
 async def update_process_step(
     record_id: str,
     step_data: ProcessStepUpdate,
-    service: BaseService = Depends(get_process_steps_service)
+    service: PostgresProcessStepsService = Depends(get_service)
 ) -> ProcessStep:
     """Update process step."""
     try:
@@ -142,7 +132,7 @@ async def update_process_step(
 async def delete_process_step(
     record_id: str,
     hard_delete: bool = Query(False, description="Perform hard delete"),
-    service: BaseService = Depends(get_process_steps_service)
+    service: PostgresProcessStepsService = Depends(get_service)
 ) -> BaseResponse:
     """Delete process step."""
     try:
@@ -155,7 +145,7 @@ async def delete_process_step(
                 )
             message = "Process step deleted permanently"
         else:
-            await service.update(record_id, ProcessStepUpdate(isActive=False))
+            await service.update(record_id, ProcessStepUpdate(is_active=False))
             message = "Process step deactivated"
         
         return BaseResponse(success=True, message=message)

@@ -23,7 +23,7 @@ def main():
         print()
         
         # Check for required environment variables
-        required_vars = ["XATA_API_KEY", "XATA_DATABASE_URL"]
+        required_vars = ["DATABASE_URL"]
         missing_vars = [var for var in required_vars if not os.getenv(var)]
         
         if missing_vars:

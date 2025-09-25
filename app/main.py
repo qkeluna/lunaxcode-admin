@@ -20,6 +20,7 @@ from app.core.exceptions import (
 from app.core.logging import setup_logging
 from app.api import api_router
 from app.core.cache import redis_client, init_cache
+from app.database.postgres import init_database, close_database, db_manager
 
 # Setup logging
 setup_logging()
@@ -33,6 +34,14 @@ async def lifespan(app: FastAPI):
     
     # Startup
     try:
+        # Initialize database
+        await init_database()
+        logger.info("✅ PostgreSQL database initialized")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+        raise
+    
+    try:
         # Initialize cache
         await init_cache()
         logger.info("✅ Cache system initialized")
@@ -43,6 +52,12 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("🛑 Shutting down Lunaxcode CMS Admin API...")
+    try:
+        await close_database()
+        logger.info("✅ PostgreSQL connection closed")
+    except Exception as e:
+        logger.error(f"❌ Error closing database connection: {e}")
+    
     try:
         await redis_client.close()
         logger.info("✅ Redis connection closed")
@@ -111,6 +126,13 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     try:
+        # Test PostgreSQL connection
+        database_status = "connected"
+        try:
+            await db_manager.health_check()
+        except Exception:
+            database_status = "disconnected"
+        
         # Test Redis connection
         redis_status = "connected"
         try:
@@ -118,10 +140,13 @@ async def health_check():
         except Exception:
             redis_status = "disconnected"
         
+        overall_status = "healthy" if database_status == "connected" else "unhealthy"
+        
         return {
-            "status": "healthy",
+            "status": overall_status,
             "timestamp": time.time(),
             "services": {
+                "database": database_status,
                 "redis": redis_status,
                 "api": "operational"
             }

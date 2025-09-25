@@ -5,17 +5,19 @@ Pricing plans API endpoints.
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-# Caching temporarily disabled for deployment
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.xata import get_database, XataDB
-from app.models.content import (
+from app.database.postgres import get_db_session
+from app.models.schemas import (
     PricingPlan, 
     PricingPlanCreate, 
     PricingPlanUpdate, 
-    PlanCategory
+    PaginationParams, 
+    PaginatedResponse, 
+    BaseResponse
 )
-from app.models.base import PaginationParams, PaginatedResponse, BaseResponse
-from app.services.pricing_plans import PricingPlansService
+from app.models.database import PlanCategory
+from app.services.postgres_pricing_plans import PostgresPricingPlansService
 from app.core.exceptions import NotFoundError, ValidationException
 from app.core.config import settings
 
@@ -23,9 +25,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_pricing_plans_service(db: XataDB = Depends(get_database)) -> PricingPlansService:
+def get_pricing_plans_service(session: AsyncSession = Depends(get_db_session)) -> PostgresPricingPlansService:
     """Get pricing plans service instance."""
-    return PricingPlansService(db)
+    return PostgresPricingPlansService(session)
 
 
 @router.post(
@@ -37,7 +39,7 @@ def get_pricing_plans_service(db: XataDB = Depends(get_database)) -> PricingPlan
 )
 async def create_pricing_plan(
     plan_data: PricingPlanCreate,
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> PricingPlan:
     """Create a new pricing plan."""
     try:
@@ -67,7 +69,7 @@ async def get_pricing_plans(
     size: int = Query(20, ge=1, le=100, description="Page size"),
     category: Optional[PlanCategory] = Query(None, description="Filter by category"),
     active_only: bool = Query(True, description="Filter active plans only"),
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> PaginatedResponse:
     """Get all pricing plans with pagination and filtering."""
     try:
@@ -78,11 +80,11 @@ async def get_pricing_plans(
         if category:
             filter_conditions["category"] = category.value
         if active_only:
-            filter_conditions["isActive"] = True
+            filter_conditions["is_active"] = True
         
         return await service.get_all(
             pagination=pagination,
-            filter_conditions=filter_conditions if filter_conditions else None
+            filters=filter_conditions if filter_conditions else None
         )
         
     except Exception as e:
@@ -102,7 +104,7 @@ async def get_pricing_plans(
 # @cache(expire=settings.CACHE_TTL)
 async def get_popular_pricing_plans(
     limit: int = Query(3, ge=1, le=10, description="Maximum number of popular plans"),
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> List[PricingPlan]:
     """Get popular pricing plans."""
     try:
@@ -124,7 +126,7 @@ async def get_popular_pricing_plans(
 # @cache(expire=settings.CACHE_TTL)
 async def get_pricing_plans_by_category(
     category: PlanCategory,
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> List[PricingPlan]:
     """Get pricing plans by category."""
     try:
@@ -146,7 +148,7 @@ async def get_pricing_plans_by_category(
 # @cache(expire=settings.CACHE_TTL)
 async def get_pricing_plan_by_plan_id(
     plan_id: str,
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> PricingPlan:
     """Get pricing plan by planId."""
     try:
@@ -168,29 +170,29 @@ async def get_pricing_plan_by_plan_id(
 
 
 @router.get(
-    "/{record_id}",
+    "/{id}",
     response_model=PricingPlan,
     summary="Get pricing plan by ID",
-    description="Get a specific pricing plan by its Xata record ID"
+    description="Get a specific pricing plan by its database ID"
 )
 # @cache(expire=settings.CACHE_TTL)
 async def get_pricing_plan(
-    record_id: str,
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    id: str,
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> PricingPlan:
-    """Get pricing plan by record ID."""
+    """Get pricing plan by ID."""
     try:
-        plan = await service.get_by_id(record_id)
+        plan = await service.get_by_id(id)
         if not plan:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Pricing plan with ID '{record_id}' not found"
+                detail=f"Pricing plan with ID '{id}' not found"
             )
         return plan
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting pricing plan {record_id}: {e}")
+        logger.error(f"Error getting pricing plan {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve pricing plan"
@@ -198,19 +200,19 @@ async def get_pricing_plan(
 
 
 @router.patch(
-    "/{record_id}",
+    "/{id}",
     response_model=PricingPlan,
     summary="Update pricing plan",
     description="Update an existing pricing plan"
 )
 async def update_pricing_plan(
-    record_id: str,
+    id: str,
     plan_data: PricingPlanUpdate,
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> PricingPlan:
     """Update pricing plan."""
     try:
-        return await service.update(record_id, plan_data)
+        return await service.update(id, plan_data)
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -222,7 +224,7 @@ async def update_pricing_plan(
             detail=e.detail
         )
     except Exception as e:
-        logger.error(f"Error updating pricing plan {record_id}: {e}")
+        logger.error(f"Error updating pricing plan {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update pricing plan"
@@ -230,26 +232,26 @@ async def update_pricing_plan(
 
 
 @router.patch(
-    "/{record_id}/popular",
+    "/{id}/popular",
     response_model=PricingPlan,
     summary="Set pricing plan popular status",
     description="Set whether a pricing plan is marked as popular"
 )
 async def set_pricing_plan_popular_status(
-    record_id: str,
+    id: str,
     popular: bool,
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> PricingPlan:
     """Set pricing plan popular status."""
     try:
-        return await service.set_popular_status(record_id, popular)
+        return await service.set_popular_status(id, popular)
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=e.detail
         )
     except Exception as e:
-        logger.error(f"Error setting popular status for pricing plan {record_id}: {e}")
+        logger.error(f"Error setting popular status for pricing plan {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update pricing plan popular status"
@@ -264,7 +266,7 @@ async def set_pricing_plan_popular_status(
 )
 async def reorder_pricing_plans(
     plan_orders: List[dict],
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> List[PricingPlan]:
     """
     Reorder pricing plans.
@@ -286,30 +288,30 @@ async def reorder_pricing_plans(
 
 
 @router.delete(
-    "/{record_id}",
+    "/{id}",
     response_model=BaseResponse,
     summary="Delete pricing plan",
-    description="Delete a pricing plan (soft delete by setting isActive to false)"
+    description="Delete a pricing plan (soft delete by setting is_active to false)"
 )
 async def delete_pricing_plan(
-    record_id: str,
+    id: str,
     hard_delete: bool = Query(False, description="Perform hard delete instead of soft delete"),
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> BaseResponse:
     """Delete pricing plan."""
     try:
         if hard_delete:
             # Hard delete
-            success = await service.delete(record_id)
+            success = await service.delete(id)
             if not success:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Pricing plan with ID '{record_id}' not found"
+                    detail=f"Pricing plan with ID '{id}' not found"
                 )
             message = "Pricing plan deleted permanently"
         else:
             # Soft delete
-            await service.update(record_id, PricingPlanUpdate(isActive=False))
+            await service.update(id, PricingPlanUpdate(is_active=False))
             message = "Pricing plan deactivated"
         
         return BaseResponse(
@@ -325,7 +327,7 @@ async def delete_pricing_plan(
             detail=e.detail
         )
     except Exception as e:
-        logger.error(f"Error deleting pricing plan {record_id}: {e}")
+        logger.error(f"Error deleting pricing plan {id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete pricing plan"
@@ -343,25 +345,25 @@ async def search_pricing_plans(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
     category: Optional[PlanCategory] = Query(None, description="Filter by category"),
-    service: PricingPlansService = Depends(get_pricing_plans_service)
+    service: PostgresPricingPlansService = Depends(get_pricing_plans_service)
 ) -> PaginatedResponse:
     """Search pricing plans with full-text search."""
     try:
         pagination = PaginationParams(page=page, size=size)
         
         # Build filter conditions
-        filter_conditions = {"isActive": True}
+        filter_conditions = {"is_active": True}
         if category:
             filter_conditions["category"] = category.value
         
         # Search in relevant fields
-        target_columns = ["name", "description", "planId"]
+        search_fields = ["name", "description", "plan_id"]
         
         return await service.search(
             query=query,
             pagination=pagination,
-            target_columns=target_columns,
-            filter_conditions=filter_conditions
+            search_fields=search_fields,
+            filters=filter_conditions
         )
         
     except Exception as e:
