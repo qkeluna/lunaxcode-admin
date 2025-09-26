@@ -38,6 +38,17 @@ The API manages all content for Lunaxcode.com including:
 - **Uvicorn**: ASGI server for running the application
 - **Python 3.9+**: Modern Python with async/await support
 
+## 🔐 Better Auth Migration
+
+This project now supports Better Auth for authentication. To migrate your database:
+
+```bash
+# Run the Better Auth migration
+python scripts/migrate_better_auth.py
+```
+
+For detailed migration instructions, see: [Better Auth Migration Guide](docs/better-auth-migration-guide.md)
+
 ## 📦 Installation
 
 1. **Clone the repository**:

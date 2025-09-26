@@ -438,3 +438,83 @@ class OnboardingAnalytics(BaseModel):
         Index('idx_analytics_device_type', 'device_type'),
         Index('idx_analytics_created_at', 'created_at'),
     )
+
+
+# ============================================================================
+# BETTER AUTH MODELS
+# ============================================================================
+
+class UserRole(str, enum.Enum):
+    """User roles for Better Auth."""
+    ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
+    USER = "user"
+
+
+class OAuthProvider(str, enum.Enum):
+    """OAuth providers for Better Auth."""
+    GOOGLE = "google"
+    GITHUB = "github"
+    MICROSOFT = "microsoft"
+    APPLE = "apple"
+
+
+# Better Auth Users Model
+class User(BaseModel):
+    """Better Auth users table for authentication."""
+    __tablename__ = "users"
+    
+    name: Mapped[str] = mapped_column(String(255), nullable=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    emailVerified: Mapped[bool] = mapped_column(Boolean, default=False)
+    image: Mapped[str] = mapped_column(String(255), nullable=True)
+    role: Mapped[UserRole] = mapped_column(
+        SQLEnum(UserRole), default=UserRole.ADMIN, nullable=False
+    )
+    
+    __table_args__ = (
+        Index('idx_users_email', 'email'),
+        Index('idx_users_role', 'role'),
+        Index('idx_users_email_verified', 'emailVerified'),
+    )
+
+
+# Better Auth Sessions Model
+class Session(BaseModel):
+    """Better Auth sessions table for session management."""
+    __tablename__ = "sessions"
+    
+    userId: Mapped[str] = mapped_column(String(255), nullable=False)
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    expiresAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ipAddress: Mapped[str] = mapped_column(String(45), nullable=True)  # IPv4/IPv6
+    userAgent: Mapped[str] = mapped_column(Text, nullable=True)
+    
+    __table_args__ = (
+        Index('idx_sessions_token', 'token'),
+        Index('idx_sessions_user_id', 'userId'),
+        Index('idx_sessions_expires_at', 'expiresAt'),
+        Index('idx_sessions_created_at', 'created_at'),
+    )
+
+
+# Better Auth Accounts Model (OAuth)
+class Account(BaseModel):
+    """Better Auth accounts table for OAuth provider links."""
+    __tablename__ = "accounts"
+    
+    userId: Mapped[str] = mapped_column(String(255), nullable=False)
+    providerId: Mapped[OAuthProvider] = mapped_column(SQLEnum(OAuthProvider), nullable=False)
+    accountId: Mapped[str] = mapped_column(String(255), nullable=False)
+    accessToken: Mapped[str] = mapped_column(Text, nullable=True)
+    refreshToken: Mapped[str] = mapped_column(Text, nullable=True)
+    expiresAt: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    scope: Mapped[str] = mapped_column(Text, nullable=True)
+    tokenType: Mapped[str] = mapped_column(String(50), default='bearer', nullable=False)
+    
+    __table_args__ = (
+        Index('idx_accounts_user_id', 'userId'),
+        Index('idx_accounts_provider_id', 'providerId'),
+        Index('idx_accounts_provider_account', 'providerId', 'accountId'),
+        Index('idx_accounts_expires_at', 'expiresAt'),
+    )
