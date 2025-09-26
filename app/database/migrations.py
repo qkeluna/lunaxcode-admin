@@ -11,10 +11,11 @@ from app.models.database import (
     PricingPlan, Feature, ProcessStep, HeroSection, Testimonial,
     ContactInfo, FAQ, SiteSetting, AddonService,
     OnboardingStep, OnboardingStepProgress, OnboardingAnalytics,
+    User, Session, Account,  # Better Auth models
     PlanCategory, ButtonVariant, ContactType, FAQCategory,
     SettingType, ServiceCategory, ProjectType, ServiceUnit,
     ServiceType, StepName, StepStatus, ComponentType, UILayout,
-    DeviceType, ConversionStatus
+    DeviceType, ConversionStatus, UserRole, OAuthProvider
 )
 
 logger = logging.getLogger(__name__)

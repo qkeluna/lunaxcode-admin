@@ -13,7 +13,7 @@ from app.models.database import (
     PlanCategory, ButtonVariant, ContactType, FAQCategory, 
     SettingType, ServiceCategory, ProjectType, ServiceUnit,
     ServiceType, StepName, StepStatus, ComponentType, UILayout,
-    DeviceType, ConversionStatus
+    DeviceType, ConversionStatus, UserRole, OAuthProvider
 )
 
 
@@ -668,3 +668,224 @@ class StartOnboardingFlowResponse(BaseModel):
     flow_config: OnboardingFlowConfig = Field(..., description="Flow configuration")
     current_step: OnboardingStep = Field(..., description="First step to display")
     analytics_id: str = Field(..., description="Analytics tracking ID")
+
+
+# ============================================================================
+# BETTER AUTH USER SCHEMAS
+# ============================================================================
+
+class UserBase(BaseModel):
+    """Base user schema for Better Auth."""
+    
+    name: Optional[str] = Field(None, description="User's display name")
+    email: str = Field(..., description="User's email address")
+    role: UserRole = Field(UserRole.ADMIN, description="User role")
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """Validate email format."""
+        import re
+        if not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$', v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+
+
+class UserCreate(UserBase):
+    """Schema for creating a new user."""
+    
+    emailVerified: bool = Field(False, description="Whether email is verified")
+    image: Optional[str] = Field(None, description="Profile image URL")
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating user information."""
+    
+    name: Optional[str] = Field(None, description="User's display name")
+    email: Optional[str] = Field(None, description="User's email address")
+    emailVerified: Optional[bool] = Field(None, description="Whether email is verified")
+    image: Optional[str] = Field(None, description="Profile image URL")
+    role: Optional[UserRole] = Field(None, description="User role")
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """Validate email format."""
+        if v is not None:
+            import re
+            if not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$', v):
+                raise ValueError('Invalid email format')
+            return v.lower()
+        return v
+
+
+class User(BaseSchema):
+    """User response schema."""
+    
+    name: Optional[str] = Field(None, description="User's display name")
+    email: str = Field(..., description="User's email address")
+    emailVerified: bool = Field(..., description="Whether email is verified")
+    image: Optional[str] = Field(None, description="Profile image URL")
+    role: UserRole = Field(..., description="User role")
+
+
+class UserList(BaseModel):
+    """Schema for listing users with filters."""
+    
+    role: Optional[UserRole] = Field(None, description="Filter by role")
+    emailVerified: Optional[bool] = Field(None, description="Filter by email verification status")
+    search: Optional[str] = Field(None, description="Search by name or email")
+
+
+# Better Auth Session Schemas
+class SessionBase(BaseModel):
+    """Base session schema."""
+    
+    userId: str = Field(..., description="User ID")
+    token: str = Field(..., description="Session token")
+    expiresAt: datetime = Field(..., description="Session expiration time")
+    ipAddress: Optional[str] = Field(None, description="Client IP address")
+    userAgent: Optional[str] = Field(None, description="Client user agent")
+
+
+class SessionCreate(SessionBase):
+    """Schema for creating a session."""
+    pass
+
+
+class Session(BaseSchema):
+    """Session response schema."""
+    
+    userId: str = Field(..., description="User ID")
+    token: str = Field(..., description="Session token")
+    expiresAt: datetime = Field(..., description="Session expiration time")
+    ipAddress: Optional[str] = Field(None, description="Client IP address")
+    userAgent: Optional[str] = Field(None, description="Client user agent")
+    
+    # Add user information for convenience
+    user: Optional[User] = Field(None, description="Associated user information")
+
+
+# Better Auth Account Schemas (OAuth)
+class AccountBase(BaseModel):
+    """Base account schema for OAuth providers."""
+    
+    userId: str = Field(..., description="User ID")
+    providerId: OAuthProvider = Field(..., description="OAuth provider")
+    accountId: str = Field(..., description="Provider-specific account ID")
+    accessToken: Optional[str] = Field(None, description="OAuth access token")
+    refreshToken: Optional[str] = Field(None, description="OAuth refresh token")
+    expiresAt: Optional[datetime] = Field(None, description="Token expiration time")
+    scope: Optional[str] = Field(None, description="OAuth scope")
+    tokenType: str = Field("bearer", description="Token type")
+
+
+class AccountCreate(AccountBase):
+    """Schema for creating an OAuth account link."""
+    pass
+
+
+class AccountUpdate(BaseModel):
+    """Schema for updating OAuth account information."""
+    
+    accessToken: Optional[str] = Field(None, description="OAuth access token")
+    refreshToken: Optional[str] = Field(None, description="OAuth refresh token")
+    expiresAt: Optional[datetime] = Field(None, description="Token expiration time")
+    scope: Optional[str] = Field(None, description="OAuth scope")
+
+
+class Account(BaseSchema):
+    """Account response schema."""
+    
+    userId: str = Field(..., description="User ID")
+    providerId: OAuthProvider = Field(..., description="OAuth provider")
+    accountId: str = Field(..., description="Provider-specific account ID")
+    expiresAt: Optional[datetime] = Field(None, description="Token expiration time")
+    scope: Optional[str] = Field(None, description="OAuth scope")
+    tokenType: str = Field(..., description="Token type")
+    
+    # Add user information for convenience
+    user: Optional[User] = Field(None, description="Associated user information")
+    
+    # Note: We don't expose tokens in responses for security
+
+
+# Authentication Request/Response Schemas
+class LoginRequest(BaseModel):
+    """Login request schema."""
+    
+    email: str = Field(..., description="User email")
+    password: str = Field(..., description="User password")
+    remember_me: bool = Field(False, description="Remember login")
+
+
+class LoginResponse(BaseModel):
+    """Login response schema."""
+    
+    user: User = Field(..., description="User information")
+    session: Session = Field(..., description="Session information")
+    access_token: str = Field(..., description="Access token")
+    token_type: str = Field("bearer", description="Token type")
+
+
+class RegisterRequest(BaseModel):
+    """Registration request schema."""
+    
+    name: Optional[str] = Field(None, description="User's display name")
+    email: str = Field(..., description="User's email address")
+    password: str = Field(..., description="User's password")
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """Validate email format."""
+        import re
+        if not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$', v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+    
+    @validator('password')
+    def validate_password(cls, v):
+        """Validate password strength."""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        return v
+
+
+class PasswordChangeRequest(BaseModel):
+    """Password change request schema."""
+    
+    current_password: str = Field(..., description="Current password")
+    new_password: str = Field(..., description="New password")
+    
+    @validator('new_password')
+    def validate_password(cls, v):
+        """Validate password strength."""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        return v
+
+
+class EmailVerificationRequest(BaseModel):
+    """Email verification request schema."""
+    
+    email: str = Field(..., description="Email to verify")
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """Validate email format."""
+        import re
+        if not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$', v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+
+
+class PasswordResetRequest(BaseModel):
+    """Password reset request schema."""
+    
+    email: str = Field(..., description="Email for password reset")
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """Validate email format."""
+        import re
+        if not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$', v):
+            raise ValueError('Invalid email format')
+        return v.lower()
