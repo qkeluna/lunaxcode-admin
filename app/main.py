@@ -22,6 +22,12 @@ from app.api import api_router
 from app.core.cache import redis_client, init_cache
 from app.database.postgres import init_database, close_database, db_manager
 
+# Import API key middleware and rate limiting
+from app.core.api_auth import APIKeyAuthMiddleware
+from app.core.api_monitoring import APIMonitoringMiddleware
+from app.core.rate_limiting import limiter, rate_limit_exception_handler
+from slowapi.errors import RateLimitExceeded
+
 # Setup logging
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -68,7 +74,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="CMS Admin API for Lunaxcode.com - Manage content, pricing, and site settings",
+    description="CMS Admin API for Lunaxcode.com - Manage content, pricing, and site settings with API key support",
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
@@ -76,7 +82,17 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Middleware
+# Add rate limiter state
+app.state.limiter = limiter
+
+# Middleware (order matters!)
+# API Monitoring middleware (outermost)
+app.add_middleware(APIMonitoringMiddleware)
+
+# API Key authentication middleware
+app.add_middleware(APIKeyAuthMiddleware)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_HOSTS,
@@ -105,6 +121,7 @@ async def add_process_time_header(request: Request, call_next):
 # Exception handlers
 app.add_exception_handler(CustomHTTPException, custom_http_exception_handler)
 app.add_exception_handler(422, validation_exception_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Include API router

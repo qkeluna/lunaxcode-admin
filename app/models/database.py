@@ -50,6 +50,12 @@ class SettingType(str, enum.Enum):
     JSON = "json"
 
 
+class RateLimitTier(str, enum.Enum):
+    BASIC = "basic"
+    STANDARD = "standard"
+    PREMIUM = "premium"
+
+
 class ServiceCategory(str, enum.Enum):
     GENERAL = "general"
     SEO = "seo"
@@ -437,4 +443,36 @@ class OnboardingAnalytics(BaseModel):
         Index('idx_analytics_completion_rate', 'completion_rate'),
         Index('idx_analytics_device_type', 'device_type'),
         Index('idx_analytics_created_at', 'created_at'),
+    )
+
+
+# API Key Model
+class APIKey(BaseModel):
+    """API key management table for external access."""
+    __tablename__ = "api_keys"
+
+    key_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    key_prefix: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    scopes: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
+    rate_limit_tier: Mapped[RateLimitTier] = mapped_column(
+        SQLEnum(RateLimitTier), default=RateLimitTier.BASIC, nullable=False
+    )
+    requests_per_hour: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    requests_per_day: Mapped[int] = mapped_column(Integer, default=2400, nullable=False)
+    ip_whitelist: Mapped[List[str]] = mapped_column(JSON, nullable=True, default=list)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    request_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(100), nullable=True)  # user email or system
+
+    __table_args__ = (
+        Index('idx_apikey_hash', 'key_hash'),
+        Index('idx_apikey_prefix', 'key_prefix'),
+        Index('idx_apikey_active', 'is_active'),
+        Index('idx_apikey_tier', 'rate_limit_tier'),
+        Index('idx_apikey_created_by', 'created_by'),
+        Index('idx_apikey_last_used', 'last_used_at'),
     )

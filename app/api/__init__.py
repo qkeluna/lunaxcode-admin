@@ -5,9 +5,9 @@ API router configuration.
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    auth, pricing_plans, features, process_steps, hero_section, 
+    auth, pricing_plans, features, process_steps, hero_section,
     testimonials, contact_info, faqs, site_settings, addon_services,
-    onboarding
+    onboarding, api_keys
 )
 
 api_router = APIRouter()
@@ -26,3 +26,6 @@ api_router.include_router(faqs.router, prefix="/faqs", tags=["FAQs"])
 api_router.include_router(site_settings.router, prefix="/site-settings", tags=["Site Settings"])
 api_router.include_router(addon_services.router, prefix="/addon-services", tags=["Addon Services"])
 api_router.include_router(onboarding.router, prefix="/onboarding", tags=["Onboarding"])
+
+# Include API key management router
+api_router.include_router(api_keys.router, tags=["API Keys"])
