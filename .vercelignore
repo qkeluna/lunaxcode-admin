@@ -1,0 +1,46 @@
+# Virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+logs/
+*.log
+
+# Development files
+.env
+.env.local
+.env.development
+.env.test
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs/
+README.md
+CLAUDE.md
+
+# Scripts
+scripts/
+start_dev.py
+seed.py
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test files
+tests/
+*_test.py
+test_*.py
